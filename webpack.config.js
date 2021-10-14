@@ -1,53 +1,48 @@
-/*!
- * Copyright (c) Microsoft Corporation. All rights reserved.
- * Licensed under the MIT License.
- */
+const path = require("path");
 
 const { CleanWebpackPlugin } = require("clean-webpack-plugin");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 
-module.exports = env => {
-    const htmlTemplate = "./src/index.html";
-    const plugins = env && env.clean
-        ? [new CleanWebpackPlugin(), new HtmlWebpackPlugin({ template: htmlTemplate })]
-        : [new HtmlWebpackPlugin({ template: htmlTemplate })];
-
-    const mode = env && env.prod
-        ? "production"
-        : "development";
+module.exports = (env) => {
+    const { prod, clean } = env;
+    mode = prod ? "production" : "development";
+    console.log(mode);
+    console.log(clean);
+    console.log(env);
 
     return {
         devtool: "inline-source-map",
         entry: {
-            app: "./src/app.js",
+            app:"./src/app.ts"
         },
         mode,
         output: {
+            path: path.resolve(process.cwd(), "dist"),
             filename: "[name].[contenthash].js",
         },
         module: {
             rules: [
                 {
-                    test: /\.jsx/,
-                    exclude: /(node_modules)/,
-                    use: {
-                        loader: "babel-loader",
-                        options: {
-                            presets: ["@babel/preset-env", "@babel/preset-react"]
-                        }
-                    }
+                    test: /\.tsx?$/,
+                    use: "ts-loader",
+                    exclude: /node_modules/,
                 }
-            ]
+            ],
         },
-        plugins,
+        plugins:[
+            new CleanWebpackPlugin(),
+            new HtmlWebpackPlugin({
+                template: "src/index.html",
+            }),
+        ],
         resolve: {
-            extensions: [".jsx", ".js"],
-            alias: {
-                vue$: "vue/dist/vue.esm-bundler.js",
+            extensions: [".ts", ".tsx", ".jsx", ".js", ".html"],
+            fallback: {
+                buffer: require.resolve("buffer/"),
             },
         },
         devServer: {
-            open: true
-        }
+            open: true,
+        },
     };
 };
