@@ -4,7 +4,7 @@
  */
 
 import { SharedMap } from "fluid-framework";
-import { AzureClient, LOCAL_MODE_TENANT_ID } from "@fluidframework/azure-client";
+import { AzureClient, AzureClientProps, LOCAL_MODE_TENANT_ID } from "@fluidframework/azure-client";
 import { InsecureTokenProvider } from "@fluidframework/test-client-utils";
 
 // The config is set to run against a local service by default. Run `npx tinylicious` to run locally
@@ -20,21 +20,82 @@ const serviceConfigLocal = {
     },
 };
 
+//
 // Service Config for Azure
-// const serviceConfigAzure = {
-//     connection : {
-//         tenantId: "myTenantId",
-//         tokenProvider: new AzureFunctionTokenProvider(
-//             "myAzureFunctionUrl" + "/api/GetAzureToken",
-//             { userId: "userId", userName: "Test User" }
-//         ),
-//         orderer: "https://myOrdererUrl",
-//         storage: "https://myStorageUrl",
-//     }
-// }
+
+import { ITokenProvider, ITokenResponse } from "@fluidframework/azure-client";
+import axios from "axios"
+export class AzureFunctionTokenProvider implements ITokenProvider {
+  constructor(
+    private readonly azFunctionUrl: string,
+    private readonly userId: string,
+    private readonly userName: string,
+  ){
+
+  }
+
+  public async fetchOrdererToken(tenantId: string, documentId: string): Promise<ITokenResponse> {
+        return {
+            jwt: await this.getToken(tenantId, documentId),
+        };
+    }
+
+    public async fetchStorageToken(tenantId: string, documentId: string): Promise<ITokenResponse> {
+        return {
+            jwt: await this.getToken(tenantId, documentId),
+        };
+    }
+
+    private async getToken(tenantId: string, documentId: string): Promise<string> {
+        const params = {
+            tenantId,
+            documentId,
+            userId: this.userId,
+            userName: this.userName,
+        };
+        const token = this.getTokenFromServer(params);
+        return token;
+    }
+
+    private async getTokenFromServer(input: any): Promise<string> {
+        // The example below uses the axios library to make HTTP requests. You can use other libraries or approaches to making an HTTP request.
+        return axios.get(this.azFunctionUrl, {
+            params: input,
+        }).then((response) => {
+            return response.data as string;
+        }).catch((err) => {
+            return err as string;
+        });
+    }
+}
+
+// the keys file is excluded from source control since these shouldn't be checked in.
+import {azureFunctionUrl, tenantId, orderer, storage } from "./keys";
+
+// Replace with Azure Function URL
+// "myAzureFunctionUrl" + "/api/GetAzureToken"
+const userId = "userId";
+const userName = "Test User";
+
+
+
+const serviceConfigAzure: AzureClientProps = {
+    connection : {
+        tenantId,
+        tokenProvider: new AzureFunctionTokenProvider(
+            //
+            azureFunctionUrl,
+            userId,
+            userName
+        ),
+        orderer,
+        storage,
+    }
+}
 
 // Select service config to use
-const serviceConfig = serviceConfigLocal;
+const serviceConfig: AzureClientProps = serviceConfigAzure;
+//serviceConfigLocal;
 
 // creates and fetches containes
 // creates an existing or loads a new one
